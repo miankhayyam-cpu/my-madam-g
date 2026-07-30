@@ -43,7 +43,8 @@ same-Wi-Fi LAN hosting both technically work but require either local device acc
 network, so they're not useful across an LDR — skip straight to this.)
 
 1. Push this folder to a GitHub repo (can be private or public — see the privacy note below).
-2. Repo Settings → Pages → deploy from the `main` branch, root folder.
+2. Repo Settings → Pages → deploy from your default branch (`master` or `main`, whichever this repo
+   uses — check with `git branch --show-current`), root folder.
 3. Send her the resulting `https://<you>.github.io/<repo>/` link (any messaging app is fine — see
    `SEND_TO_HER.md` for exact wording you can copy-paste).
 4. All she has to do:
@@ -113,6 +114,20 @@ while it's open and online.
 
 If you skip Drive setup entirely, the sync buttons just show a friendly "not configured yet" message —
 the rest of the app is unaffected either way.
+
+## Troubleshooting: an update isn't showing up
+
+Every time you push a code change, bump `CACHE_NAME` at the top of `sw.js` (e.g. `v5` → `v6`) — this is
+what tells an already-installed copy of the app that a new version exists at all; without it, phones that
+already have the app installed may keep using what they cached before, even after you've redeployed.
+
+If a device still looks stale after that:
+1. Give GitHub Pages a minute or two to actually rebuild after the push (Settings → Pages shows the last
+   deploy time), and remember GitHub's CDN can take a short moment to catch up after that.
+2. On the phone: open the installed app → browser menu → site settings (or "App info" on the home-screen
+   icon) → **Clear storage/cache** for the site → reopen it. This forces a completely fresh install of
+   the service worker and precache, guaranteed to pick up the latest version.
+3. As a last resort, uninstall the home-screen icon and reinstall from the link again.
 
 ## Backups
 
