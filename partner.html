@@ -15,6 +15,20 @@
 
   <main id="partner-view" class="app-view"></main>
 
+  <nav class="tab-bar" id="partner-tab-bar" hidden>
+    <button class="tab-btn active" data-tab="calendar">
+      <span class="tab-icon">📅</span><span>Calendar</span>
+    </button>
+    <button class="tab-btn" data-tab="insights">
+      <span class="tab-icon">📊</span><span>Insights</span>
+    </button>
+    <button class="tab-btn" data-tab="schedule">
+      <span class="tab-icon">🏋️</span><span>Schedule</span>
+    </button>
+  </nav>
+
+  <div id="partner-sheet" class="sheet"></div>
+
   <script type="module" src="./js/partner.js"></script>
 </body>
 </html>

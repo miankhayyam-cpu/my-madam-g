@@ -96,6 +96,7 @@ body {
   margin: 0 16px 8px;
 }
 .onboard-card p { margin: 0 0 12px; font-size: 0.88rem; }
+.reminder-card { background: var(--orange-pale); border-color: var(--orange); }
 
 /* Calendar */
 .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
@@ -186,6 +187,10 @@ textarea { resize: vertical; }
 .chip.active { background: var(--pink); border-color: var(--pink); color: white; }
 .flow-chip.active { background: var(--pink-dark); }
 .symptom-group { margin-bottom: 12px; }
+
+.exercise-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.exercise-field { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--muted); }
+.exercise-field input { width: 100%; }
 .symptom-cat { font-size: 0.75rem; color: var(--muted); margin-bottom: 6px; }
 
 .btn {

@@ -1,4 +1,4 @@
-import { getLog, saveLog, getSymptoms } from '../storage.js';
+import { getLog, saveLog, getSymptoms, getExerciseSchedule } from '../storage.js';
 
 const FLOW_LABELS = ['None', 'Spotting', 'Light', 'Medium', 'Heavy'];
 
@@ -12,16 +12,21 @@ function formatDateHeading(dateStr) {
   });
 }
 
+function blankLog() {
+  return { flow: 0, bbt: null, energy: null, symptoms: [], notes: '', exercise: {} };
+}
+
 export function openDayEditor(dateStr, sheetRoot, onSaved) {
   currentDate = dateStr;
-  const existing = getLog(dateStr) || { flow: 0, bbt: null, energy: null, symptoms: [], notes: '' };
-  draft = structuredClone(existing);
+  const existing = getLog(dateStr) || blankLog();
+  draft = { ...blankLog(), ...structuredClone(existing), exercise: { ...structuredClone(existing.exercise || {}) } };
   render(sheetRoot, onSaved);
   sheetRoot.classList.add('open');
 }
 
 function render(sheetRoot, onSaved) {
   const symptoms = getSymptoms();
+  const schedule = getExerciseSchedule();
   const byCategory = {};
   symptoms.forEach((s) => {
     byCategory[s.category] = byCategory[s.category] || [];
@@ -73,6 +78,19 @@ function render(sheetRoot, onSaved) {
       <div class="field-label">Symptoms</div>
       ${symptomsHtml}
 
+      <div class="field-label">Exercise</div>
+      <div class="exercise-grid">
+        ${schedule
+          .map(
+            (ex) => `<label class="exercise-field">
+              <span>${ex.name}</span>
+              <input type="number" min="0" step="1" inputmode="numeric" id="exercise-${ex.id}"
+                value="${draft.exercise[ex.id] ?? ''}" placeholder="0" />
+            </label>`
+          )
+          .join('')}
+      </div>
+
       <div class="field-label">Notes</div>
       <textarea id="notes-input" rows="3" placeholder="Anything else worth remembering...">${draft.notes || ''}</textarea>
 
@@ -114,12 +132,17 @@ function render(sheetRoot, onSaved) {
   sheetRoot.querySelector('#sheet-save').addEventListener('click', () => {
     draft.bbt = parseFloat(sheetRoot.querySelector('#bbt-input').value) || null;
     draft.notes = sheetRoot.querySelector('#notes-input').value.trim();
+    draft.exercise = {};
+    schedule.forEach((ex) => {
+      const raw = sheetRoot.querySelector(`#exercise-${ex.id}`).value;
+      if (raw !== '') draft.exercise[ex.id] = Number(raw);
+    });
     saveLog(currentDate, draft);
     close();
     onSaved();
   });
   sheetRoot.querySelector('#sheet-delete').addEventListener('click', () => {
-    draft = { flow: 0, bbt: null, energy: null, symptoms: [], notes: '' };
+    draft = blankLog();
     saveLog(currentDate, draft);
     close();
     onSaved();

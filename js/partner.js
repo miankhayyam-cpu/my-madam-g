@@ -1,103 +1,21 @@
-import { decryptJSON } from './crypto.js';
-import { pullFromDrive } from './drive.js';
+import { getLogs } from './storage.js';
+import { getPredictions } from './cycle.js';
+import { runPartnerSync } from './sync.js';
+import { renderCalendar } from './render/calendar.js';
+import { renderInsights } from './render/insights.js';
+import { renderScheduleEditor } from './render/scheduleEditor.js';
+import { openDayView } from './render/dayView.js';
+
+const PASS_KEY = 'ptrack_partner_passphrase';
+const CONNECTED_KEY = 'ptrack_partner_connected';
+const AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000;
 
 const view = document.getElementById('partner-view');
-const CACHE_KEY = 'ptrack_partner_cache';
-const PASS_KEY = 'ptrack_partner_passphrase';
+const tabBar = document.getElementById('partner-tab-bar');
+const sheet = document.getElementById('partner-sheet');
+const tabs = tabBar.querySelectorAll('.tab-btn');
 
-function getCache() {
-  try { return JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch { return null; }
-}
-
-function setCache(summary) {
-  localStorage.setItem(CACHE_KEY, JSON.stringify(summary));
-}
-
-function relativeTime(iso) {
-  if (!iso) return 'never';
-  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins} min ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours} hr ago`;
-  return `${Math.round(hours / 24)} day(s) ago`;
-}
-
-function daysUntil(dateStr) {
-  const today = new Date().toISOString().slice(0, 10);
-  return Math.round((new Date(dateStr) - new Date(today)) / 86400000);
-}
-
-function renderSummary(summary) {
-  if (!summary || !summary.hasData) {
-    view.innerHTML = `<div class="empty-state"><p>No cycle data has been shared yet.</p></div>`;
-    return;
-  }
-  const untilNext = daysUntil(summary.nextPredictedStart);
-  const fertileNow =
-    new Date().toISOString().slice(0, 10) >= summary.fertileWindowStart &&
-    new Date().toISOString().slice(0, 10) <= summary.fertileWindowEnd;
-
-  view.innerHTML = `
-    <div class="insight-cards">
-      <div class="insight-card highlight">
-        <div class="insight-value">${summary.phaseLabel}</div>
-        <div class="insight-label">Current phase</div>
-      </div>
-      <div class="insight-card">
-        <div class="insight-value">${summary.cycleDayToday}</div>
-        <div class="insight-label">Cycle day</div>
-      </div>
-    </div>
-    <div class="stats-grid">
-      <div class="stat-row"><span>Next period</span><strong>${untilNext <= 0 ? 'Any day now' : `in ${untilNext}d`}</strong></div>
-      <div class="stat-row"><span>Fertile window</span><strong>${fertileNow ? 'Active now' : `${summary.fertileWindowStart} → ${summary.fertileWindowEnd}`}</strong></div>
-      <div class="stat-row"><span>PMS window starts</span><strong>${summary.pmsStart}</strong></div>
-      <div class="stat-row"><span>Average cycle length</span><strong>${summary.avgCycleLength} days</strong></div>
-    </div>
-    ${summary.isIrregular ? '<div class="notice-banner">Recent cycles have been irregular in length.</div>' : ''}
-    <p class="muted">Last synced: ${relativeTime(summary.updatedAt)}</p>
-    <div class="settings-actions">
-      <button class="btn secondary" id="refresh-btn">Refresh from Drive</button>
-    </div>
-  `;
-  view.querySelector('#refresh-btn').addEventListener('click', refresh);
-}
-
-function renderConnectForm(errorMsg) {
-  view.innerHTML = `
-    <p class="muted">Enter the same passphrase agreed on with your partner to view her shared cycle status.
-      This dashboard is read-only and never shows notes, symptoms, or temperature.</p>
-    ${errorMsg ? `<div class="notice-banner">${errorMsg}</div>` : ''}
-    <label class="field-label">Shared passphrase</label>
-    <input type="text" id="passphrase-input" value="${localStorage.getItem(PASS_KEY) || ''}" />
-    <div class="settings-actions">
-      <button class="btn primary" id="connect-btn">Connect &amp; view</button>
-    </div>
-  `;
-  view.querySelector('#connect-btn').addEventListener('click', refresh);
-}
-
-async function refresh() {
-  const passphraseInput = document.getElementById('passphrase-input');
-  const passphrase = passphraseInput ? passphraseInput.value : localStorage.getItem(PASS_KEY);
-  if (!passphrase) { renderConnectForm(); return; }
-  localStorage.setItem(PASS_KEY, passphrase);
-
-  try {
-    const encrypted = await pullFromDrive();
-    const summary = await decryptJSON(encrypted, passphrase);
-    setCache(summary);
-    renderSummary(summary);
-  } catch (err) {
-    const cached = getCache();
-    if (cached) {
-      renderSummary(cached);
-    } else {
-      renderConnectForm(err.message);
-    }
-  }
-}
+let activeTab = 'calendar';
 
 function consumeSetupLinkParam() {
   const params = new URLSearchParams(location.search);
@@ -107,8 +25,74 @@ function consumeSetupLinkParam() {
   history.replaceState(null, '', location.pathname + location.hash);
 }
 
+function hasLoggedData() {
+  return Object.keys(getLogs()).length > 0;
+}
+
+function renderConnectForm(errorMsg) {
+  tabBar.hidden = true;
+  view.innerHTML = `
+    <p class="muted">Enter the same passphrase agreed on with your partner to view her tracker.</p>
+    ${errorMsg ? `<div class="notice-banner">${errorMsg}</div>` : ''}
+    <label class="field-label">Shared passphrase</label>
+    <input type="text" id="passphrase-input" value="${localStorage.getItem(PASS_KEY) || ''}" />
+    <div class="settings-actions">
+      <button class="btn primary" id="connect-btn">Connect &amp; view</button>
+    </div>
+  `;
+  view.querySelector('#connect-btn').addEventListener('click', () => {
+    const passphrase = view.querySelector('#passphrase-input').value;
+    if (!passphrase) return;
+    localStorage.setItem(PASS_KEY, passphrase);
+    connectAndSync();
+  });
+}
+
+function renderDashboard() {
+  tabBar.hidden = false;
+  const predictions = getPredictions();
+  if (activeTab === 'calendar') {
+    renderCalendar(view, predictions, (dateStr) => openDayView(dateStr, sheet));
+  } else if (activeTab === 'insights') {
+    renderInsights(view, predictions);
+  } else if (activeTab === 'schedule') {
+    renderScheduleEditor(view, localStorage.getItem(PASS_KEY), renderDashboard);
+  }
+}
+
+async function connectAndSync({ silent } = {}) {
+  const passphrase = localStorage.getItem(PASS_KEY);
+  if (!passphrase) { renderConnectForm(); return; }
+  try {
+    await runPartnerSync(passphrase);
+    localStorage.setItem(CONNECTED_KEY, '1');
+    renderDashboard();
+  } catch (err) {
+    if (hasLoggedData()) {
+      renderDashboard();
+    } else if (!silent) {
+      renderConnectForm(err.message);
+    }
+  }
+}
+
+tabs.forEach((btn) => {
+  btn.addEventListener('click', () => {
+    activeTab = btn.dataset.tab;
+    tabs.forEach((b) => b.classList.toggle('active', b === btn));
+    renderDashboard();
+  });
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') connectAndSync({ silent: true });
+});
+setInterval(() => connectAndSync({ silent: true }), AUTO_SYNC_INTERVAL_MS);
+
 consumeSetupLinkParam();
-const cached = getCache();
-if (cached) renderSummary(cached);
-else if (localStorage.getItem(PASS_KEY)) refresh();
-else renderConnectForm();
+if (localStorage.getItem(CONNECTED_KEY) === '1' && hasLoggedData()) {
+  renderDashboard();
+  connectAndSync({ silent: true });
+} else {
+  connectAndSync();
+}

@@ -1,7 +1,8 @@
 import { GOOGLE_CLIENT_ID } from './drive-config.js';
 
 const SCOPE = 'https://www.googleapis.com/auth/drive.file';
-const SYNC_FILENAME = 'my-madam-g-sync.enc.json';
+export const SYNC_FILENAME = 'my-madam-g-sync.enc.json';
+export const SCHEDULE_FILENAME = 'my-madam-g-schedule.enc.json';
 
 let tokenClient = null;
 let cachedToken = null;
@@ -57,8 +58,8 @@ async function driveFetch(url, token, options = {}) {
   return res;
 }
 
-async function findFileId(token) {
-  const q = encodeURIComponent(`name='${SYNC_FILENAME}' and trashed=false`);
+async function findFileId(token, filename) {
+  const q = encodeURIComponent(`name='${filename}' and trashed=false`);
   const res = await driveFetch(
     `https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,name)`,
     token
@@ -67,9 +68,9 @@ async function findFileId(token) {
   return data.files?.[0]?.id || null;
 }
 
-async function createFile(token, contentStr) {
+async function createFile(token, filename, contentStr) {
   const boundary = 'my_madam_g_sync_boundary';
-  const metadata = { name: SYNC_FILENAME, mimeType: 'text/plain' };
+  const metadata = { name: filename, mimeType: 'text/plain' };
   const body =
     `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
     `--${boundary}\r\nContent-Type: text/plain\r\n\r\n${contentStr}\r\n--${boundary}--`;
@@ -95,23 +96,33 @@ async function downloadFile(token, fileId) {
   return res.text();
 }
 
-export async function pushToDrive(encryptedStr) {
+function fileIdCacheKey(filename) {
+  return `ptrack_drive_fileid_${filename}`;
+}
+
+/** Uploads (creating if needed) the given already-encrypted string to a named
+ * Drive file. Each filename is a single-writer channel — callers should never
+ * push the same filename from both sides, to avoid last-write-wins clobbers. */
+export async function pushFile(filename, encryptedStr) {
   const token = await getAccessToken();
-  let fileId = localStorage.getItem('ptrack_drive_fileid') || (await findFileId(token));
+  const cacheKey = fileIdCacheKey(filename);
+  let fileId = localStorage.getItem(cacheKey) || (await findFileId(token, filename));
   if (!fileId) {
-    fileId = await createFile(token, encryptedStr);
+    fileId = await createFile(token, filename, encryptedStr);
   } else {
     await updateFile(token, fileId, encryptedStr);
   }
-  localStorage.setItem('ptrack_drive_fileid', fileId);
-  localStorage.setItem('ptrack_drive_lastsync', new Date().toISOString());
+  localStorage.setItem(cacheKey, fileId);
+  if (filename === SYNC_FILENAME) {
+    localStorage.setItem('ptrack_drive_lastsync', new Date().toISOString());
+  }
   return fileId;
 }
 
-export async function pullFromDrive() {
+export async function pullFile(filename) {
   const token = await getAccessToken();
-  const fileId = await findFileId(token);
-  if (!fileId) throw new Error('No synced file found yet — ask your partner to sync at least once first.');
+  const fileId = await findFileId(token, filename);
+  if (!fileId) return null;
   return downloadFile(token, fileId);
 }
 

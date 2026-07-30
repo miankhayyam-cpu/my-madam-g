@@ -1,4 +1,4 @@
-const CACHE_NAME = 'my-madam-g-v1';
+const CACHE_NAME = 'my-madam-g-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -12,9 +12,14 @@ const ASSETS = [
   './js/render/insights.js',
   './js/render/settings.js',
   './js/render/partnerPrompt.js',
+  './js/render/reminder.js',
+  './js/render/dayView.js',
+  './js/render/scheduleEditor.js',
   './js/crypto.js',
   './js/drive.js',
   './js/drive-config.js',
+  './js/sync.js',
+  './js/exercise.js',
   './partner.html',
   './js/partner.js',
   './icons/icon.svg',

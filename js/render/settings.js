@@ -1,12 +1,10 @@
 import { getSettings, saveSettings, getSymptoms, saveSymptoms, exportAll, importAll, wipeAll } from '../storage.js';
-import { getPredictions, buildPhaseSummary } from '../cycle.js';
-import { encryptJSON } from '../crypto.js';
-import { pushToDrive, getLastSyncTime } from '../drive.js';
+import { getLastSyncTime } from '../drive.js';
+import { runHerSync } from '../sync.js';
 
 function getSyncPrefs() {
   return {
     passphrase: localStorage.getItem('ptrack_sync_passphrase') || '',
-    autoSync: localStorage.getItem('ptrack_sync_autosync') === '1',
   };
 }
 
@@ -38,12 +36,6 @@ function download(filename, dataObj) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
-}
-
-export async function syncPhaseSummaryToDrive(passphrase) {
-  const summary = buildPhaseSummary(getPredictions());
-  const encrypted = await encryptJSON(summary, passphrase);
-  await pushToDrive(encrypted);
 }
 
 export function renderSettings(root, onChanged) {
@@ -86,15 +78,25 @@ export function renderSettings(root, onChanged) {
       <button class="btn secondary" id="add-symptom-btn">Add</button>
     </div>
 
+    <h3 class="section-title">Daily reminder</h3>
+    <p class="muted">Nudges you to log something each day — an in-app banner always shows if enabled, plus a
+      notification when the app happens to be open around your chosen time. This can't reliably wake up your
+      phone if the app is fully closed all day (there's no server behind it), but works whenever you have it
+      open.</p>
+    <div class="chip-row">
+      <button class="chip ${settings.reminderEnabled ? 'active' : ''}" id="reminder-toggle">Daily reminder</button>
+    </div>
+    <label class="field-label">Remind me around</label>
+    <input type="time" id="reminder-time-input" value="${settings.reminderTime}" />
+
     <h3 class="section-title">Partner sync</h3>
-    <p class="muted">Shares only your current cycle phase and predicted dates (no notes, symptoms, or temperature) to a
-      shared Google Drive file, encrypted with a passphrase only the two of you know. Requires a one-time Google
-      Drive connection and Google account sign-in.</p>
+    <p class="muted">Once connected, this shares your full log — flow, symptoms, temperature, energy, notes,
+      and exercise tracking — to a shared Google Drive file, encrypted with a passphrase only the two of you
+      know. It syncs automatically in the background (whenever you log something, open the app, or roughly
+      every 15 minutes while it's open) — no manual step needed after the first connection. It also pulls
+      down any exercise schedule updates your partner sends.</p>
     <label class="field-label">Shared passphrase</label>
     <input type="text" id="sync-passphrase" placeholder="Agree on this with your partner" value="${getSyncPrefs().passphrase}" />
-    <div class="chip-row" style="margin-top:10px;">
-      <button class="chip ${getSyncPrefs().autoSync ? 'active' : ''}" id="autosync-toggle">Auto-sync on save</button>
-    </div>
     <p class="muted" id="sync-status">Last synced: ${relativeTime(getLastSyncTime())}</p>
     <div class="settings-actions">
       <button class="btn primary" id="sync-now-btn">Sync now</button>
@@ -148,6 +150,21 @@ export function renderSettings(root, onChanged) {
     renderSettings(root, onChanged);
   });
 
+  root.querySelector('#reminder-toggle').addEventListener('click', async () => {
+    const next = !getSettings().reminderEnabled;
+    if (next && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      await Notification.requestPermission();
+    }
+    saveSettings({ reminderEnabled: next });
+    onChanged();
+    renderSettings(root, onChanged);
+  });
+
+  root.querySelector('#reminder-time-input').addEventListener('change', (e) => {
+    saveSettings({ reminderTime: e.target.value });
+    onChanged();
+  });
+
   root.querySelector('#export-btn').addEventListener('click', () => {
     download(`my-madam-g-backup-${new Date().toISOString().slice(0, 10)}.json`, exportAll());
   });
@@ -171,12 +188,6 @@ export function renderSettings(root, onChanged) {
     localStorage.setItem('ptrack_sync_passphrase', e.target.value);
   });
 
-  root.querySelector('#autosync-toggle').addEventListener('click', () => {
-    const next = !getSyncPrefs().autoSync;
-    localStorage.setItem('ptrack_sync_autosync', next ? '1' : '0');
-    renderSettings(root, onChanged);
-  });
-
   root.querySelector('#sync-now-btn').addEventListener('click', async () => {
     const btn = root.querySelector('#sync-now-btn');
     const passphrase = root.querySelector('#sync-passphrase').value;
@@ -185,7 +196,8 @@ export function renderSettings(root, onChanged) {
     btn.disabled = true;
     btn.textContent = 'Syncing...';
     try {
-      await syncPhaseSummaryToDrive(passphrase);
+      await runHerSync(passphrase);
+      onChanged();
       root.querySelector('#sync-status').textContent = `Last synced: ${relativeTime(getLastSyncTime())}`;
     } catch (err) {
       alert('Sync failed: ' + err.message);

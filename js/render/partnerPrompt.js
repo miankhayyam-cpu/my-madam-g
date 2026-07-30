@@ -1,9 +1,8 @@
 import { getLastSyncTime } from '../drive.js';
-import { syncPhaseSummaryToDrive } from './settings.js';
+import { runHerSync } from '../sync.js';
 
 const DISMISS_KEY = 'ptrack_onboarding_dismissed';
 const PASS_KEY = 'ptrack_sync_passphrase';
-const AUTOSYNC_KEY = 'ptrack_sync_autosync';
 
 /** Reads ?setup=<passphrase> from a one-tap invite link, stores it locally,
  * then strips it from the visible URL/history so the secret doesn't linger there. */
@@ -25,8 +24,8 @@ export function shouldShowPrompt() {
 export function renderPartnerPrompt(container, onDone) {
   container.innerHTML = `
     <div class="onboard-card">
-      <p>Your partner set up a private link so they can see your current cycle phase (never your notes,
-      symptoms, or temperature — just phase, cycle day, and predicted dates). Turn this on?</p>
+      <p>Your partner set up a private link so they can see your full tracker — logs, symptoms, and the
+      exercises they've asked you to do. It'll also stay in sync automatically after this. Turn this on?</p>
       <div class="settings-actions">
         <button class="btn primary" id="enable-sync-btn">Yes, turn it on</button>
         <button class="btn secondary" id="dismiss-sync-btn">Not now</button>
@@ -42,8 +41,7 @@ export function renderPartnerPrompt(container, onDone) {
     btn.textContent = 'Connecting...';
     try {
       const passphrase = localStorage.getItem(PASS_KEY);
-      await syncPhaseSummaryToDrive(passphrase);
-      localStorage.setItem(AUTOSYNC_KEY, '1');
+      await runHerSync(passphrase);
       status.textContent = 'Done — sharing is on.';
       setTimeout(onDone, 900);
     } catch (err) {

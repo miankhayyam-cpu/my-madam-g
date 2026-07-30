@@ -1,5 +1,6 @@
 import { getLogs, getSymptoms } from '../storage.js';
 import { diffDays, toDateStr } from '../cycle.js';
+import { computeExerciseStats } from '../exercise.js';
 
 function daysUntil(dateStr) {
   const today = toDateStr(new Date());
@@ -23,11 +24,31 @@ function symptomFrequency() {
     .slice(0, 8);
 }
 
+function renderExerciseSection() {
+  const { schedule, totals, streakDays } = computeExerciseStats();
+  if (schedule.length === 0) return '';
+  const rows = schedule
+    .map(
+      (ex) => `<div class="stat-row"><span>${ex.name} (this week)</span><strong>${totals[ex.id]?.weekTotal ?? 0}</strong></div>`
+    )
+    .join('');
+  return `
+    <h3 class="section-title">Exercise</h3>
+    <div class="stats-grid">
+      <div class="stat-row"><span>Current streak</span><strong>${streakDays} day${streakDays === 1 ? '' : 's'}</strong></div>
+      ${rows}
+    </div>
+  `;
+}
+
 export function renderInsights(root, predictions) {
   if (!predictions) {
-    root.innerHTML = `<div class="empty-state">
-      <p>Log at least one period to start seeing predictions and insights here.</p>
-    </div>`;
+    root.innerHTML = `
+      <div class="empty-state">
+        <p>Log at least one period to start seeing predictions and insights here.</p>
+      </div>
+      ${renderExerciseSection()}
+    `;
     return;
   }
 
@@ -82,5 +103,7 @@ export function renderInsights(root, predictions) {
 
     <h3 class="section-title">Most common symptoms</h3>
     <div class="freq-list">${freqHtml}</div>
+
+    ${renderExerciseSection()}
   `;
 }

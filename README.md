@@ -5,10 +5,28 @@ analytics, no server. All logs live only in the browser's local storage on the p
 
 ## What's here
 
-- `index.html` / `js/` / `css/` — the main tracker (calendar, day logging, predictions, insights, settings)
-- `partner.html` — a read-only dashboard showing only the current cycle *phase* (never notes, symptoms,
-  or temperature), meant for a partner's phone
+- `index.html` / `js/` / `css/` — the main tracker (calendar, day logging, predictions, insights, settings,
+  exercise logging, daily reminders)
+- `partner.html` — a full read-only mirror of her tracker (calendar, insights, and an editable exercise
+  schedule), meant for a partner's phone
 - `manifest.json` / `sw.js` / `icons/` — makes it installable on Android and usable offline
+
+## Exercise tracking
+
+Each day's log has number fields for whatever's in the current exercise schedule (defaults to push-ups
+and sit-ups). The schedule itself can be edited from the partner dashboard's **Schedule** tab — add
+"Planks" there and it shows up as a new field in her day editor next time her app syncs. Insights (on
+both her app and the partner dashboard) shows weekly totals per exercise and a current streak.
+
+## Daily reminder
+
+Settings → **Daily reminder** lets her opt into a nudge if she hasn't logged anything by a chosen time —
+an in-app banner, plus a browser notification if permission is granted. Being honest about the limits:
+without a backend push server, there's no way to reliably wake the phone when the app is fully closed all
+day — this fires only when the app happens to be open (foreground, just reopened, or within roughly 15
+minutes via the periodic check while it's open). A true "always fires at 8pm even if closed" reminder
+would need Web Push + a scheduler (e.g. a free scheduled GitHub Action calling the push service) — doable
+as a follow-up if it turns out the in-app version isn't enough.
 
 ## How the predictions work
 
@@ -37,12 +55,20 @@ network, so they're not useful across an LDR — skip straight to this.)
    Her actual logs are created and stay only in her phone's local storage; nothing about her cycle is
    ever in the repo or on GitHub.
 
-## Optional: partner phase-sync dashboard
+## Optional: partner sync dashboard
 
-By default the app is 100% offline with no sync of any kind. If you want a "what phase is she in" view
-on your own phone, there's an opt-in sync using a shared Google Drive file, encrypted client-side with a
-passphrase only the two of you know — Google only ever sees ciphertext. This part needs a one-time setup
-by you (it requires a Google Cloud account), but her side is a single link tap + one confirmation button.
+By default the app is 100% offline with no sync of any kind. If you want your own view of her full
+tracker, there's an opt-in sync using two shared Google Drive files, each encrypted client-side with a
+passphrase only the two of you know — Google only ever sees ciphertext:
+- her app → a file with her full logs, symptoms, settings, and exercise schedule (everything, not just a
+  phase summary — she should know that before turning it on, see `SEND_TO_HER.md`)
+- your dashboard → a separate file with just the exercise schedule, so you can add things like planks and
+  have them appear on her side
+
+This part needs a one-time setup by you (it requires a Google Cloud account), but her side is a single
+link tap + one confirmation button, and it syncs automatically after that — no manual "sync" step, no
+toggle to remember. It re-syncs whenever she logs something, opens the app, or roughly every 15 minutes
+while it's open and online.
 
 **Your one-time setup (~10 minutes, do this before sending her anything):**
 
@@ -67,21 +93,23 @@ by you (it requires a Google Cloud account), but her side is a single link tap +
 
 **Her side — genuinely just this:**
 - She opens the link you send her (works whether or not she's already installed the app).
-- A card appears: *"Your partner set up a private link... Turn this on?"* — she taps **Yes, turn it on**.
+- A card appears explaining what it shares and asking *"Turn this on?"* — she taps **Yes, turn it on**.
 - A Google sign-in popup appears (using the shared account from step 6) — she signs in once. Because
   it's a personal app in Testing mode, Google will show an "unverified app" warning screen first — she
   taps **Advanced** → **Go to My Madam G (unsafe)** to continue. That warning is standard for any
   personal-use Google integration that hasn't gone through Google's business verification; it's not a
   sign anything is actually wrong, but it's worth telling her in advance so it isn't alarming (see
   `SEND_TO_HER.md`).
-- Done — from then on it syncs silently in the background whenever she logs something and is online. No
-  passphrase typing, no settings menu required on her end.
+- Done — from then on it syncs silently in the background whenever she logs something, opens the app, or
+  roughly every 15 minutes while it's open. No passphrase typing, no settings menu required on her end.
 
 **Your side:**
 - Open `partner.html` on your own phone (install it the same way, or just bookmark it) using the same
-  `?setup=` link (or type the passphrase in manually — same field, your choice). It shows her current
-  phase, cycle day, days until next period, fertile-window status, and PMS window — nothing more
-  detailed than that. It caches the last-synced summary so it still shows something if opened offline.
+  `?setup=` link (or type the passphrase in manually — same field, your choice). It shows her full
+  calendar and insights (tap any day for flow/symptoms/temperature/notes/exercise detail), plus a
+  **Schedule** tab where you add or remove exercises — anything you add there pushes to her app
+  automatically. It caches the last-synced data so it still shows something if opened offline, and
+  re-checks every 5 minutes or so while open.
 
 If you skip Drive setup entirely, the sync buttons just show a friendly "not configured yet" message —
 the rest of the app is unaffected either way.

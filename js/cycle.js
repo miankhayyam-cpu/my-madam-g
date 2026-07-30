@@ -146,41 +146,6 @@ export function getPredictions() {
   };
 }
 
-export function getPhaseLabel(predictions) {
-  if (!predictions) return 'Not enough data yet';
-  const today = toDateStr(new Date());
-  const logs = getLogs();
-  if (logs[today] && logs[today].flow > 0) return 'Period';
-  if (today >= predictions.fertileWindowStart && today <= predictions.fertileWindowEnd) {
-    return today === predictions.predictedOvulationDay ? 'Ovulation day' : 'Fertile window';
-  }
-  if (today >= predictions.pmsStart && today < predictions.nextPredictedStart) return 'PMS window';
-  if (today >= predictions.nextPredictedStart) return 'Period due';
-  if (diffDays(predictions.lastPeriodStart, today) <= predictions.avgPeriodLength) return 'Period';
-  return 'Follicular / luteal phase';
-}
-
-/** Deliberately excludes notes, symptoms, and BBT — only cycle-phase status,
- * suitable for sharing with a partner without exposing private log detail. */
-export function buildPhaseSummary(predictions) {
-  if (!predictions) {
-    return { hasData: false, updatedAt: new Date().toISOString() };
-  }
-  return {
-    hasData: true,
-    phaseLabel: getPhaseLabel(predictions),
-    cycleDayToday: predictions.cycleDayToday,
-    nextPredictedStart: predictions.nextPredictedStart,
-    fertileWindowStart: predictions.fertileWindowStart,
-    fertileWindowEnd: predictions.fertileWindowEnd,
-    predictedOvulationDay: predictions.predictedOvulationDay,
-    pmsStart: predictions.pmsStart,
-    avgCycleLength: predictions.avgCycleLength,
-    isIrregular: predictions.isIrregular,
-    updatedAt: new Date().toISOString(),
-  };
-}
-
 export function dayType(dateStr, predictions) {
   const logs = getLogs();
   const log = logs[dateStr];
