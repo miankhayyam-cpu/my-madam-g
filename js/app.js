@@ -71,8 +71,12 @@ document.addEventListener('visibilitychange', () => {
 setInterval(autoSync, AUTO_SYNC_INTERVAL_MS);
 
 if ('serviceWorker' in navigator) {
+  window.__swDebugLog = [];
+  navigator.serviceWorker.addEventListener('message', (e) => window.__swDebugLog.push(e.data));
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js').catch((err) => {
+      window.__swDebugLog.push({ type: 'register-error', error: String(err) });
+    });
   });
 }
 
