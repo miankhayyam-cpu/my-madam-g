@@ -27,14 +27,26 @@ const ASSETS = [
 
 /** Precache with cache: 'reload' — a plain cache.addAll() would let the
  * browser/CDN's HTTP cache hand back stale bytes for unchanged URLs, locking
- * an old version into the Cache Storage entry until the next version bump. */
+ * an old version into the Cache Storage entry until the next version bump.
+ * DIAGNOSTIC BUILD: per-file try/catch + a debug entry, to find out why the
+ * live precache came up empty. */
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) =>
-        Promise.all(ASSETS.map((url) => fetch(url, { cache: 'reload' }).then((res) => cache.put(url, res))))
-      )
-      .then(() => self.skipWaiting())
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const results = [];
+      for (const url of ASSETS) {
+        try {
+          const res = await fetch(url, { cache: 'reload' });
+          await cache.put(url, res.clone());
+          results.push({ url, status: res.status });
+        } catch (err) {
+          results.push({ url, error: String(err) });
+        }
+      }
+      await cache.put('./__sw-debug__', new Response(JSON.stringify(results)));
+      self.skipWaiting();
+    })()
   );
 });
 
