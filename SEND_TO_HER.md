@@ -10,7 +10,7 @@ first, then paste as-is.
 > phone — no account, no company server, nothing.
 >
 > To set it up:
-> 1. Tap this link: **[YOUR GITHUB PAGES URL HERE]**
+> 1. Tap this link: **https://miankhayyam-cpu.github.io/my-madam-g/**
 > 2. Tap the ⋮ menu (top right in Chrome) → **"Add to Home screen"**
 > 3. Open it from the new icon on your home screen — that's it, you're set. Works even without
 >    internet after that.
@@ -32,7 +32,9 @@ first, then paste as-is.
 > log, not just a phase summary, so it's totally your call. You can turn it off anytime in Settings.
 >
 > If you want to turn it on:
-> 1. Tap this link: **[YOUR ?setup=... INVITE LINK HERE]**
+> 1. Tap this link: **[paste the link from "Copy her one-tap setup link" in your own Settings tab here —
+>    it looks like https://miankhayyam-cpu.github.io/my-madam-g/?setup=XXXXXXXX, but only works once
+>    you've finished the Google Cloud setup in README.md]**
 > 2. A little card will pop up explaining what it shares and asking "Turn this on?" — tap
 >    **Yes, turn it on**.
 > 3. Google will probably show a scary-looking "this app isn't verified" warning — that's normal for

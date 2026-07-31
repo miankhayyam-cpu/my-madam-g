@@ -45,8 +45,12 @@ network, so they're not useful across an LDR — skip straight to this.)
 1. Push this folder to a GitHub repo (can be private or public — see the privacy note below).
 2. Repo Settings → Pages → deploy from your default branch (`master` or `main`, whichever this repo
    uses — check with `git branch --show-current`), root folder.
-3. Send her the resulting `https://<you>.github.io/<repo>/` link (any messaging app is fine — see
-   `SEND_TO_HER.md` for exact wording you can copy-paste).
+3. Send her the resulting link (any messaging app is fine — see `SEND_TO_HER.md` for exact wording you
+   can copy-paste). This is already deployed and live at:
+
+   **https://miankhayyam-cpu.github.io/my-madam-g/**
+
+   Repo: https://github.com/miankhayyam-cpu/my-madam-g
 4. All she has to do:
    - Tap the link, opens in Chrome.
    - Chrome menu (⋮) → **Add to Home screen**.
@@ -80,17 +84,21 @@ while it's open and online.
    **Test users**, add both of your Google account emails. Leave publishing status as **Testing** (no
    Google review needed for personal use).
 4. **APIs & Services → Credentials → Create Credentials → OAuth client ID** → Application type **Web
-   application** → under **Authorized JavaScript origins**, add the exact GitHub Pages origin from the
-   install step above (e.g. `https://<you>.github.io` — no trailing path).
+   application** → under **Authorized JavaScript origins**, add exactly:
+
+   `https://miankhayyam-cpu.github.io` (no trailing path/slash)
 5. Copy the generated Client ID into [js/drive-config.js](js/drive-config.js), replacing
-   `YOUR_CLIENT_ID.apps.googleusercontent.com`, then push/redeploy.
+   `YOUR_CLIENT_ID.apps.googleusercontent.com`, then commit + push (Pages redeploys automatically in
+   about a minute — this step is still outstanding; the placeholder is currently live).
 6. Decide on a shared Google account for this — simplest is to have both of you sign in with the *same*
    Google account for Drive purposes only (a spare/shared account works fine). This sidesteps Drive's
    file-sharing/permissions dance entirely and is what makes her side a single confirmation tap instead
    of a multi-step Drive share.
-7. Open your live GitHub Pages URL yourself once → **Settings** tab → **Partner sync** → tap
-   **"Copy her one-tap setup link"** (this auto-generates a passphrase if you haven't set one and copies
-   a link like `https://<you>.github.io/<repo>/?setup=XXXXXXXX` to your clipboard).
+7. Open **https://miankhayyam-cpu.github.io/my-madam-g/** yourself once → **Settings** tab →
+   **Partner sync** → tap **"Copy her one-tap setup link"** (this auto-generates a passphrase if you
+   haven't set one and copies a link like
+   `https://miankhayyam-cpu.github.io/my-madam-g/?setup=XXXXXXXX` to your clipboard — the real code
+   generated there, not a literal value to type in).
 
 **Her side — genuinely just this:**
 - She opens the link you send her (works whether or not she's already installed the app).
@@ -105,12 +113,12 @@ while it's open and online.
   roughly every 15 minutes while it's open. No passphrase typing, no settings menu required on her end.
 
 **Your side:**
-- Open `partner.html` on your own phone (install it the same way, or just bookmark it) using the same
-  `?setup=` link (or type the passphrase in manually — same field, your choice). It shows her full
-  calendar and insights (tap any day for flow/symptoms/temperature/notes/exercise detail), plus a
-  **Schedule** tab where you add or remove exercises — anything you add there pushes to her app
-  automatically. It caches the last-synced data so it still shows something if opened offline, and
-  re-checks every 5 minutes or so while open.
+- Open **https://miankhayyam-cpu.github.io/my-madam-g/partner.html** on your own phone (install it the
+  same way, or just bookmark it) using the same `?setup=` link (or type the passphrase in manually —
+  same field, your choice). It shows her full calendar and insights (tap any day for
+  flow/symptoms/temperature/notes/exercise detail), plus a **Schedule** tab where you add or remove
+  exercises — anything you add there pushes to her app automatically. It caches the last-synced data so
+  it still shows something if opened offline, and re-checks every 5 minutes or so while open.
 
 If you skip Drive setup entirely, the sync buttons just show a friendly "not configured yet" message —
 the rest of the app is unaffected either way.
